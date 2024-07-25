@@ -84,8 +84,10 @@ void network_time::getSocialNetwork() {
 
     QNetworkRequest request;
     //request.setUrl(QUrl("https://nist.time.gov/actualtime.cgi?lzbc=siqm9b"));
-    // request.setUrl(QUrl("http://www.sumuri.com/timecheck.php"));
-    request.setUrl(QUrl("http://www.forensodigital.com/sumuri/demo.php"));
+    //     request.setUrl(QUrl("http://www.sumuri.com"));
+    //    request.setUrl(QUrl("http://www.forensodigital.com/sumuri/demo.php"));
+    //     request.setUrl(QUrl("http://www.sumuri.com/timecheck.php"));
+    request.setUrl(QUrl("https://sumuri.com/time/"));
 
     m_networkManager = new QNetworkAccessManager(this);
     QNetworkReply *reply = m_networkManager->get(request);
@@ -96,7 +98,8 @@ void network_time::getSocialNetwork() {
 
     m_timer = new QTimer;
     connect(m_timer,SIGNAL(timeout()),this,SLOT(slot_timer()));
-    m_timer->setInterval(30000);
+//    m_timer->setInterval(30000);
+    m_timer->setInterval(50000);
     m_timer->start();
 
     // before 29-oct -2015
@@ -120,22 +123,60 @@ bool network_time::is_test_performed()
     return test_performed;
 }
 
-void network_time::onRequestCompleted() {
-
+void network_time::onRequestCompleted()
+{
 
     QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
 
     current_time_numeric_qint64 = 0;
-    QByteArray data;
+    //    QByteArray data;
 
-    while(reply->bytesAvailable())
-    {
-        data = reply->readLine();
-    }
+    //    while(reply->bytesAvailable())
+    //    {
+    //        data = reply->readLine();
+    //    }
 
 
 
-    QString all_data = QString::fromLocal8Bit(data);
+    //    QString all_data = QString::fromLocal8Bit(data);
+
+    ////    all_data = "sumuri=1719120365=";
+
+    //    if(!all_data.contains("sumuri="))
+    //    {
+    //        test_performed = true;
+    //        network_failure = true;
+    //        return;
+    //    }
+
+    //    QStringList m_list = all_data.split("=");
+
+    //    if(m_list.size() < 2)
+    //    {
+    //        test_performed = true;
+    //        network_failure = false;
+    //        return;
+    //    }
+    //    QString m_epch = m_list.at(1);
+
+
+    // added on July 16 2024
+    //    if (!reply) {
+    //        return;
+    //    }
+
+    //    if (reply->error() != QNetworkReply::NoError) {
+    //        qCritical() << "Network error:" << reply->errorString();
+    //        reply->deleteLater();
+    //        return;
+    //    }
+
+    QString m_epch;
+    QByteArray data = reply->readAll();
+    QString all_data = QString::fromUtf8(data);
+
+    QString startMarker = "sumuri=";
+    QString endMarker = "=";
 
     if(!all_data.contains("sumuri="))
     {
@@ -144,18 +185,29 @@ void network_time::onRequestCompleted() {
         return;
     }
 
-    QStringList m_list = all_data.split("=");
-
-    if(m_list.size() < 2)
+    int startIndex = data.indexOf(startMarker);
+    if (startIndex != -1)
     {
-        test_performed = true;
-        network_failure = false;
-        return;
+        startIndex += startMarker.length();  // Move past the 'sumuri=' part
+        int endIndex = data.indexOf(endMarker, startIndex);
+        if (endIndex != -1)
+        {
+            m_epch = data.mid(startIndex, endIndex - startIndex);
+//            qDebug() << "Extracted epoch value " << m_epch;
+        }
+        else
+        {
+//            qDebug() << "End marker not found.";
+        }
     }
-    QString m_epch = m_list.at(1);
+    else
+    {
+//        qDebug() << "Start marker not found.";
+    }
+
 
     current_time_numeric_qint64 = m_epch.toLongLong();
-
+//    qDebug() << "Extracted epoch value " << current_time_numeric_qint64;
 
     m_timer->stop();
 
